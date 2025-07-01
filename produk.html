@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kelola Produk</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-6">
+  <div class="max-w-5xl mx-auto bg-white p-6 rounded shadow">
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-2xl font-bold">Kelola Produk</h1>
+      <button onclick="openModal()" class="bg-blue-500 text-white px-4 py-2 rounded">+ Tambah Produk</button>
+    </div>
+
+    <!-- Filter -->
+    <div class="mb-4">
+      <label class="font-medium mr-2">Filter Kategori:</label>
+      <select id="filterKategori" onchange="fetchProduk()" class="border px-3 py-1 rounded">
+        <option value="">Semua</option>
+        <option value="Facial Wash">Facial Wash</option>
+        <option value="Toner">Toner</option>
+        <option value="Moisturizer">Moisturizer</option>
+        <option value="Serum">Serum</option>
+        <option value="Sunscreen">Sunscreen</option>
+      </select>
+    </div>
+
+    <!-- Tabel Produk -->
+    <table class="w-full table-auto border text-sm">
+      <thead class="bg-gray-200">
+        <tr>
+          <th class="border px-3 py-2">ID</th>
+          <th class="border px-3 py-2">Gambar</th>
+          <th class="border px-3 py-2">Nama</th>
+          <th class="border px-3 py-2">Kategori</th>
+          <th class="border px-3 py-2">Harga</th>
+          <th class="border px-3 py-2">Stok</th>
+          <th class="border px-3 py-2">Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="produkTable"></tbody>
+    </table>
+  </div>
+
+  <!-- Modal Form -->
+  <div id="modalForm" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded shadow-lg w-96">
+      <h2 class="text-xl font-semibold mb-4">Form Produk</h2>
+      <input type="hidden" id="produkId">
+      <input id="namaProduk" type="text" placeholder="Nama Produk" class="w-full border p-2 mb-3 rounded">
+      <select id="kategoriProduk" class="w-full border p-2 mb-3 rounded">
+        <option value="">Pilih Kategori</option>
+        <option value="Facial Wash">Facial Wash</option>
+        <option value="Toner">Toner</option>
+        <option value="Moisturizer">Moisturizer</option>
+        <option value="Serum">Serum</option>
+        <option value="Sunscreen">Sunscreen</option>
+      </select>
+      <input id="hargaProduk" type="number" placeholder="Harga" class="w-full border p-2 mb-3 rounded">
+      <input id="stokProduk" type="number" placeholder="Stok" class="w-full border p-2 mb-3 rounded">
+      <textarea id="detailProduk" placeholder="Detail Produk" class="w-full border p-2 mb-3 rounded"></textarea>
+      <input id="gambarProduk" type="file" class="w-full border p-2 mb-3 rounded">
+      <div class="flex justify-end gap-2">
+        <button onclick="closeModal()" class="bg-gray-300 px-4 py-2 rounded">Batal</button>
+        <button onclick="submitProduk()" class="bg-blue-500 text-white px-4 py-2 rounded">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = 'https://crud-api-production-1baf.up.railway.app/api/products';
+    const gambarUrl = 'https://crud-api-production-1baf.up.railway.app/uploads';
+    const token = localStorage.getItem('token');
+    const table = document.getElementById('produkTable');
+
+    if (!token) window.location.href = 'login.html';
+
+    function fetchProduk() {
+      const kategori = document.getElementById('filterKategori').value;
+      let url = API_URL;
+      if (kategori) url += '?kategori=' + encodeURIComponent(kategori);
+
+      fetch(url, {
+        headers: { Authorization: 'Bearer ' + token }
+      })
+      .then(res => res.json())
+      .then(data => {
+        table.innerHTML = '';
+        data.forEach(p => {
+          table.innerHTML += `
+            <tr>
+              <td class="border px-3 py-2">${p.id}</td>
+              <td class="border px-3 py-2"><img src="${gambarUrl}/${p.gambar}" class="w-14 h-14 object-cover rounded"></td>
+              <td class="border px-3 py-2">${p.nama_produk}</td>
+              <td class="border px-3 py-2">${p.kategori}</td>
+              <td class="border px-3 py-2">Rp${p.harga.toLocaleString()}</td>
+              <td class="border px-3 py-2">${p.stok}</td>
+              <td class="border px-3 py-2">
+                <button onclick="editProduk(${p.id}, \`${p.nama_produk}\`, \`${p.kategori}\`, ${p.harga}, ${p.stok}, \`${p.detail}\`)" class="bg-yellow-400 text-white px-2 py-1 rounded">Edit</button>
+                <button onclick="hapusProduk(${p.id})" class="bg-red-500 text-white px-2 py-1 rounded">Hapus</button>
+              </td>
+            </tr>
+          `;
+        });
+      })
+      .catch(err => console.error('Gagal fetch produk:', err));
+    }
+
+    function openModal() {
+      document.getElementById('modalForm').classList.remove('hidden');
+      document.getElementById('produkId').value = '';
+      document.getElementById('namaProduk').value = '';
+      document.getElementById('kategoriProduk').value = '';
+      document.getElementById('hargaProduk').value = '';
+      document.getElementById('stokProduk').value = '';
+      document.getElementById('detailProduk').value = '';
+      document.getElementById('gambarProduk').value = '';
+    }
+
+    function closeModal() {
+      document.getElementById('modalForm').classList.add('hidden');
+    }
+
+    function submitProduk() {
+      const id = document.getElementById('produkId').value;
+      const nama = document.getElementById('namaProduk').value;
+      const kategori = document.getElementById('kategoriProduk').value;
+      const harga = document.getElementById('hargaProduk').value;
+      const stok = document.getElementById('stokProduk').value;
+      const detail = document.getElementById('detailProduk').value;
+      const gambar = document.getElementById('gambarProduk').files[0];
+
+      const formData = new FormData();
+      formData.append('nama_produk', nama);
+      formData.append('kategori', kategori);
+      formData.append('harga', harga);
+      formData.append('stok', stok);
+      formData.append('detail', detail);
+      if (gambar) formData.append('gambar', gambar);
+
+      const method = id ? 'PUT' : 'POST';
+      const url = id ? `${API_URL}/${id}` : API_URL;
+
+      fetch(url, {
+        method,
+        headers: { Authorization: 'Bearer ' + token },
+        body: formData
+      })
+      .then(res => {
+        if (!res.ok) throw new Error('Gagal menyimpan produk.');
+        closeModal();
+        fetchProduk();
+      })
+      .catch(err => alert(err.message));
+    }
+
+    function editProduk(id, nama, kategori, harga, stok, detail) {
+      document.getElementById('produkId').value = id;
+      document.getElementById('namaProduk').value = nama;
+      document.getElementById('kategoriProduk').value = kategori;
+      document.getElementById('hargaProduk').value = harga;
+      document.getElementById('stokProduk').value = stok;
+      document.getElementById('detailProduk').value = detail;
+      document.getElementById('modalForm').classList.remove('hidden');
+    }
+
+    function hapusProduk(id) {
+      if (confirm('Yakin ingin menghapus produk ini?')) {
+        fetch(`${API_URL}/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: 'Bearer ' + token }
+        })
+        .then(res => {
+          if (!res.ok) throw new Error('Gagal menghapus produk');
+          fetchProduk();
+        })
+        .catch(err => alert(err.message));
+      }
+    }
+
+    fetchProduk();
+  </script>
+</body>
+</html>
